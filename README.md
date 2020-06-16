@@ -1,7 +1,7 @@
-# batch_convert_gltf
+# Batch convert gltf files
 A script to batch convert gltf to blend format and apply some cleaning operations automatically, and reduce the number of polygons
 
-The purpose of this script is to batch convert models gotten from various websites, from the gltf format, into a blend file.
+The purpose of this script is to batch convert models gotten from various sources, from the gltf format, into a blend file.
 
 Blender is a free and open-source software for 3D modelling (and a lot of other things !!)
 
@@ -23,3 +23,10 @@ target_vertices : This is the amount of vertices your final object will have. Se
 apply_decimate : Set to True to destructively reduce the number of vertices, set to False to keep it non-destructive and use a modifier.
 
 How to run a script in blender : https://stackoverflow.com/q/11604548/7092409
+
+When the converting is finished, you can tweak the amount of faces by using a custom property on the object. 0 means no downsizing.
+
+<img src="Images/target_faces_0.JPG">
+<img src="Images/target_faces_24000.JPG">
+<img src="Images/target_faces_6000.JPG">
+<img src="Images/target_faces_500.JPG">
