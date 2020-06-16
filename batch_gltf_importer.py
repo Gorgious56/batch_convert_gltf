@@ -5,7 +5,7 @@ import os
 import bpy
 
 
-def batch_convert_gltf(blend_path, gltf_path, overwrite, target_vertices, apply_decimate):
+def batch_convert_gltf(blend_path, gltf_path, overwrite, target_faces, apply_decimate):
     """
     Batch convert gltf files with some initial clean up :
         Resetting translation
@@ -17,7 +17,7 @@ def batch_convert_gltf(blend_path, gltf_path, overwrite, target_vertices, apply_
         blend_path : The output blend files will be saved in this folder
         gltf_path : This folder should contain folders which each contain a gltf file, a bin file and a folder with matching textures
         overwrite : Overwrite file if it already exists in the target directory
-        target_vertices : The amount of vertices the mesh should have after decimation. A value of 0 keeps the same amount of verts.
+        target_faces : The amount of faces the mesh should have after decimation. A value of 0 keeps the same amount of verts.
         apply_decimate : Actually apply the modifier to reduce file size (destructive)
         
     Returns:
@@ -58,15 +58,12 @@ def batch_convert_gltf(blend_path, gltf_path, overwrite, target_vertices, apply_
             bpy.ops.object.editmode_toggle()
             bpy.ops.object.location_clear(clear_delta=False)
             bpy.ops.mesh.customdata_custom_splitnormals_clear()
-            active_object["target_vertices"] = target_vertices
+            active_object["target_faces"] = target_faces
             
             add_decimate_modifier(active_object)
             if apply_decimate:
                 bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Decimate_collapse")
 
-#            while True:  # Recursively purge the file
-#                if str(bpy.ops.outliner.orphans_purge()) == "{'FINISHED'}":
-#                    break
             bpy.ops.outliner.orphans_purge()
             bpy.ops.outliner.orphans_purge()
             bpy.ops.wm.save_as_mainfile(filepath=blend_path + "\\" + dir + ".blend")
@@ -81,9 +78,9 @@ def add_decimate_modifier(obj):
     target = var.targets[0]
     target.id_type = 'OBJECT'
     target.id = obj
-    target.data_path = '["target_vertices"]'
+    target.data_path = '["target_faces"]'
     
-    driver.expression = f"target / {max(1, len(obj.data.vertices))} if target > 0 else 1"
+    driver.expression = f"target / {max(1, len(obj.data.polygons))} if target > 0 else 1"
 
 
 if __name__ == "__main__":
@@ -91,6 +88,6 @@ if __name__ == "__main__":
         blend_path=r"C:\Users\natha\Downloads\Scans",
         gltf_path=r"C:\Users\natha\Downloads\Scans\GLTF",
         overwrite=True,
-        target_vertices=8000,
+        target_faces=8000,
         apply_decimate=False,
         )
