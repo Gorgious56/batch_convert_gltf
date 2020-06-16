@@ -16,11 +16,11 @@ Each file will be cleaned a little bit :
 
 You have to tweak the last few lines to your liking :
 
-blend_path : Replace the expression after the equal sign and between the double quotes by the path of where you want your blend files to be created
-gltf_path : The path where your gltf folders are located. This path must be a folder which contains folders, in which there must be a gltf file, a bin file and a folder with the matching textures
-overwrite : True if you want to replace the file if it already is located in the target folder (the name will be the same as the gltf folder), False if you don't want to
-target_vertices : This is the amount of vertices your final object will have. Set to 0 to keep the same number
-apply_decimate : Set to True to destructively reduce the number of vertices, set to False to keep it non-destructive and use a modifier.
+- blend_path : Replace the expression after the equal sign and between the double quotes by the path of where you want your blend files to be created
+- gltf_path : The path where your gltf folders are located. This path must be a folder which contains folders, in which there must be a gltf file, a bin file and a folder with the matching textures
+- overwrite : True if you want to replace the file if it already is located in the target folder (the name will be the same as the gltf folder), False if you don't want to
+- target_faces : This is the amount of vertices your final object will have. Set to 0 to keep the same number
+- apply_decimate : Set to True to destructively reduce the number of vertices, set to False to keep it non-destructive and use a modifier.
 
 When the converting is finished, you can tweak the amount of faces by using a custom property on the object. 0 means no downsizing.
 
