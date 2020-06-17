@@ -5,9 +5,12 @@
 import os
 import bpy
 from mathutils import Vector
+from bpy_extras.io_utils import ImportHelper
+from bpy.props import StringProperty, BoolProperty, IntProperty
+from bpy.types import Operator
 
 
-def batch_convert_gltf(blend_path, gltf_path, overwrite, target_faces, apply_decimate):
+def batch_convert_gltf(context, blend_path, gltf_path, overwrite, target_faces, apply_decimate, unpack_textures):
     """
     Batch convert gltf files with some initial clean up :
         Resetting translation
@@ -16,11 +19,13 @@ def batch_convert_gltf(blend_path, gltf_path, overwrite, target_faces, apply_dec
         Adding a decimate modifier to reduce geometry density
         
     Arguments:
+        context: Blender context
         blend_path : The output blend files will be saved in this folder
         gltf_path : This folder should contain folders which each contain a gltf file, a bin file and a folder with matching textures
         overwrite : Overwrite file if it already exists in the target directory
         target_faces : The amount of faces the mesh should have after decimation. A value of 0 keeps the same amount of verts.
         apply_decimate : Actually apply the modifier to reduce file size (destructive)
+        unpack_textures : Unpack the textures in a separate Textures folder. The blend file size will be lower
         
     Returns:
         None
@@ -48,23 +53,27 @@ def batch_convert_gltf(blend_path, gltf_path, overwrite, target_faces, apply_dec
 
             clear_file_and_import(child_path, content)
 
-            mesh_object = clean_geometry()            
+            mesh_object = clean_geometry(context)            
             root_obj = rename_objects(mesh_object, dir)
-            clean_family(mesh_object, root_obj)
+            clean_family(context, mesh_object, root_obj)
             decimate_geometry_and_create_driver(mesh_object, root_obj, target_faces, apply_decimate)
 
             link_family_to_collection(mesh_object)
-            purge_and_save_file(blend_path, dir)
+            purge_and_save_file(blend_path, dir, unpack_textures)
+            
+            return
+    
+    return {'FINISHED'}
 
 
-def clean_family(leaf, root):
+def clean_family(context, leaf, root):
     """
     Gets rid of any unwanted matrix empty and applies loc rot scale
     """
     bpy.ops.object.select_all(action='DESELECT')
     leaf.select_set(True)
     root.select_set(True)
-    bpy.context.view_layer.objects.active = root
+    context.view_layer.objects.active = root
     bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     bpy.ops.object.select_all(action='INVERT')
@@ -77,7 +86,9 @@ def clear_file_and_import(child_path, file_path):
     bpy.ops.import_scene.gltf(filepath=child_path + "\\" + file_path)   
 
 
-def purge_and_save_file(blend_path, file_name):
+def purge_and_save_file(blend_path, file_name, unpack_textures):
+    if unpack_textures:
+        bpy.ops.file.unpack_all(method='WRITE_LOCAL')
     bpy.ops.outliner.orphans_purge()
     bpy.ops.outliner.orphans_purge()
     bpy.ops.wm.save_as_mainfile(filepath=blend_path + "\\" + file_name + ".blend")
@@ -118,11 +129,11 @@ def decimate_geometry_and_create_driver(obj, root_obj, target_faces, apply_decim
         bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Decimate_collapse")
 
 
-def clean_geometry():
-    def reset_origin(obj):
+def clean_geometry(context):
+    def reset_origin(context, obj):
         bbox_corners = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
         center = sum((Vector(b) for b in bbox_corners), Vector()) / 8
-        bpy.context.scene.cursor.location = (
+        context.scene.cursor.location = (
             center.x, 
             center.y, 
             min([vec.z for vec in bbox_corners]))
@@ -130,16 +141,16 @@ def clean_geometry():
             center.y,min([vec.z for vec in bbox_corners]))
         bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
         bpy.ops.object.location_clear(clear_delta=False)
-        bpy.context.scene.cursor.location = (0, 0, 0)
+        context.scene.cursor.location = (0, 0, 0)
 
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.location_clear(clear_delta=False)
     mesh_objects = [obj for obj in bpy.data.objects if obj.type == "MESH"]
     mesh_object =  mesh_objects[0]
-    bpy.context.view_layer.objects.active = mesh_object
+    context.view_layer.objects.active = mesh_object
     bpy.ops.object.join()
     bpy.ops.mesh.customdata_custom_splitnormals_clear()
-    reset_origin(mesh_object)
+    reset_origin(context, mesh_object)
 
     bpy.ops.object.editmode_toggle()
     bpy.ops.mesh.select_all(action='SELECT')
@@ -160,11 +171,71 @@ def link_family_to_collection(child, col=None):
         link_family_to_collection(child.parent, col)
 
 
+class BatchConvertGLTF(Operator, ImportHelper):
+    """This appears in the tooltip of the operator and in the generated docs"""
+    bl_idname = "batch_convert.gltf"  # important since its how bpy.ops.import_test.some_data is constructed
+    bl_label = "Batch Convert GLTF Files"
+
+    filter_glob: StringProperty(
+        default="",
+        options={'HIDDEN'},
+        maxlen=255,  # Max internal buffer length, longer would be clamped.
+    )
+
+    overwrite: BoolProperty(
+        name="Overwrite files",
+        description="Overwrite the blend file if a file with the same name exists in the folder",
+        default=True,
+    )    
+    
+    target_faces: IntProperty(
+        name="Target Faces",
+        description="The decimate modifier will give this number of polygons (0 keeps the same number of faces)",
+        min=0,
+        default=8000,
+    )
+    
+    apply_decimate: BoolProperty(
+        name="Apply decimate modifier",
+        description="Check this to destructively decimate the geometry",
+        default=False,
+    )
+    
+    unpack_textures: BoolProperty(
+        name="Unpack Textures",
+        description="Unpack the textures in a separate Textures folder. The blend file size will be lower",
+        default=False,
+    )
+
+    def execute(self, context):
+        return batch_convert_gltf(
+                context,
+                blend_path=os.path.dirname(self.filepath),
+                gltf_path=os.path.dirname(self.filepath),
+                overwrite=self.overwrite,
+                target_faces=self.target_faces,
+                apply_decimate=self.apply_decimate,
+                unpack_textures=self.unpack_textures,
+                )
+
+
+def menu_func_import(self, context):
+    self.layout.operator(BatchConvertGLTF.bl_idname, text="Batch Convert GLTF Files")
+
+
+def register():
+    bpy.utils.register_class(BatchConvertGLTF)
+
+
+def unregister():
+    try:
+        bpy.utils.unregister_class(BatchConvertGLTF)
+    except RuntimeError:
+        pass
+
+
 if __name__ == "__main__":
-    batch_convert_gltf(
-        blend_path=r"C:\Users\natha\Downloads\Scans",
-        gltf_path=r"C:\Users\natha\Downloads\Scans\GLTF",
-        overwrite=True,
-        target_faces=8000,
-        apply_decimate=False,
-        )
+    unregister()
+    register()
+
+    bpy.ops.batch_convert.gltf('INVOKE_DEFAULT')
