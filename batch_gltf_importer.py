@@ -38,7 +38,7 @@ def decimate_geometry_and_create_driver(obj, target_faces, apply_decimate):
     prop = obj.id_properties_ui("target_faces")
     prop.update(min=0)
     print(obj)
-    # obj.property_overridable_library_set("target_faces", True)
+    obj.property_overridable_library_set('["target_faces"]', True)
 
     dec_mod = obj.modifiers.new("Decimate_collapse", "DECIMATE")
 
@@ -120,8 +120,8 @@ class BatchConvertGLTF(Operator, ImportHelper):
         name="Save in subfolders",
         description="If Checked, blend files will be saved in the source sub folders\nOtherwise they are saved in the root folder",
         default=True,
-    )    
-    
+    )
+
     overwrite: BoolProperty(
         name="Overwrite files",
         description="Overwrite the blend file if a file with the same name exists in the folder",
