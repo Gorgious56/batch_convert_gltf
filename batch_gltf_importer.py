@@ -4,7 +4,6 @@
 import os
 import pathlib
 import bpy
-import functools
 from mathutils import Matrix, Vector
 from bpy_extras.io_utils import ImportHelper
 from bpy.props import StringProperty, BoolProperty, IntProperty, FloatProperty
@@ -121,12 +120,18 @@ class BatchConvertGLTF(Operator, ImportHelper):
         name="Save in subfolders",
         description="If Checked, blend files will be saved in the source sub folders\nOtherwise they are saved in the root folder",
         default=True,
-    )
-
+    )    
+    
     overwrite: BoolProperty(
         name="Overwrite files",
         description="Overwrite the blend file if a file with the same name exists in the folder",
         default=True,
+    )
+
+    prevent_backup: BoolProperty(
+        name="Remove Backup",
+        description="Check to automatically delete the creation of backup files when 'Save Versions' is enabled in the preferences\nThis will prevent duplicating files when they are overwritten\nWarning : Backup files will be deleted permantently",
+        default=False,
     )
 
     target_faces: IntProperty(
@@ -180,6 +185,8 @@ class BatchConvertGLTF(Operator, ImportHelper):
             if self.unpack_textures:
                 bpy.ops.file.unpack_all(method="WRITE_LOCAL")
             bpy.ops.wm.save_as_mainfile(filepath=str(blend_file))
+            if os.path.exists(blend_file + "1") and self.prevent_backup:
+                os.remove(blend_file + "1") 
             wipe_and_purge_blend()
 
         print("Batch conversion completed")
