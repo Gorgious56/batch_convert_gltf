@@ -2,9 +2,6 @@
 Base module required for Blender registration
 """
 
-import subprocess
-import pkg_resources
-import sys
 from . import auto_load
 
 bl_info = {
@@ -12,7 +9,7 @@ bl_info = {
     "author": "Gorgious",
     "description":"Batch convert GLTF files",
     "blender": (3, 0, 0),
-    "version": (0, 0, 1),
+    "version": (0, 0, 2),
     "location": "",
     "warning": "",
     "category": "Import-Export"
