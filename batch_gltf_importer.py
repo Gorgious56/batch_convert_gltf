@@ -37,10 +37,10 @@ def decimate_geometry_and_create_driver(obj, target_faces, apply_decimate):
     obj["target_faces"] = target_faces
     prop = obj.id_properties_ui("target_faces")
     prop.update(min=0)
-    print(obj)
     obj.property_overridable_library_set('["target_faces"]', True)
 
-    dec_mod = obj.modifiers.new("Decimate_collapse", "DECIMATE")
+    dec_mod_name = "Decimate_collapse"
+    dec_mod = obj.modifiers.new(dec_mod_name, "DECIMATE")
 
     driver = dec_mod.driver_add("ratio").driver
     var = driver.variables.new()
@@ -55,7 +55,7 @@ def decimate_geometry_and_create_driver(obj, target_faces, apply_decimate):
     )
 
     if apply_decimate:
-        bpy.ops.object.modifier_apply(apply_as="DATA", modifier="Decimate_collapse")
+        bpy.ops.object.modifier_apply({"object": obj}, apply_as="DATA", modifier=dec_mod_name)
 
 
 def clean_geometry(context):
@@ -65,35 +65,16 @@ def clean_geometry(context):
     window = context.window_manager.windows[0]
     screen = window.screen
 
-    area_3dview = next(a for a in screen.areas if a.ui_type == "VIEW_3D")
-    override_3dview = {
-        "area": area_3dview,
-        "window": window,
-        "screen": screen,
-        "active_object": mesh_object,
-        "selected_objects": mesh_objects,
-    }
 
-    bpy.ops.object.join(override_3dview)
+    bpy.ops.object.join({"active_object": mesh_object, "selected_editable_objects": mesh_objects})
 
     area_properties = next(a for a in screen.areas if a.ui_type == "PROPERTIES")
-    override_properties = {
-        "area": area_properties,
-        "window": window,
-        "screen": screen,
-        "active_object": mesh_object,
-        "selected_objects": mesh_object,
-        "apply_as": "DATA",
-        "modifier": "weld",
-    }
-    bpy.ops.mesh.customdata_custom_splitnormals_clear(override_properties)
-    bpy.ops.object.parent_clear(override_3dview, type="CLEAR_KEEP_TRANSFORM")
-    bpy.ops.object.transform_apply(
-        override_3dview, location=True, rotation=True, scale=True
-    )
+    bpy.ops.mesh.customdata_custom_splitnormals_clear({"mesh": mesh_object.data})
+    bpy.ops.object.parent_clear({"selected_editable_objects": [mesh_object]}, type="CLEAR_KEEP_TRANSFORM")
+    bpy.ops.object.transform_apply({"selected_editable_objects": [mesh_object]}, location=True, rotation=True, scale=True)
 
     mesh_object.modifiers.new("weld", "WELD")
-    bpy.ops.object.modifier_apply(override_properties, modifier="weld")
+    bpy.ops.object.modifier_apply({"object": mesh_object}, modifier="weld")
 
     bbox_corners = [
         mesh_object.matrix_world @ Vector(corner) for corner in mesh_object.bound_box
@@ -163,6 +144,8 @@ class BatchConvertGLTF(Operator, ImportHelper):
         name="Expected maximum dimension",
         description="Scale the model by this amount",
         default=1,
+        min=1,
+
     )
 
     def execute(self, context):
@@ -171,6 +154,7 @@ class BatchConvertGLTF(Operator, ImportHelper):
         for i, gltf in enumerate(gltfs):
             if i == 0:                
                 wipe_and_purge_blend()
+
             print(f"{len(gltfs) - i} files left")            
             dir_name = os.path.dirname(gltf)
             gltf_basename = os.path.basename(dir_name)
@@ -181,12 +165,18 @@ class BatchConvertGLTF(Operator, ImportHelper):
             if os.path.exists(blend_file) and not self.overwrite:
                 print(f"{blend_file} already exists. Do not overwrite.")
                 continue
-            import_and_clean(gltf, gltf_basename, context, self.target_faces, self.apply_decimate, self.scale_model, self.expected_dimension)           
+
+            bpy.ops.wm.save_as_mainfile(filepath=str(blend_file))  # FIXME find a way to specify filepath for unpacking without saving ? Otherwise when unpacking ressources are saved at i-1 file location
+
+            import_and_clean(gltf, gltf_basename, context, self.target_faces, self.apply_decimate, self.scale_model, self.expected_dimension)
             if self.unpack_textures:
-                bpy.ops.file.unpack_all(method="WRITE_LOCAL")
-            bpy.ops.wm.save_as_mainfile(filepath=str(blend_file))
-            if os.path.exists(blend_file + "1") and self.prevent_backup:
-                os.remove(blend_file + "1") 
+                bpy.ops.file.unpack_all(method='USE_LOCAL')
+            bpy.ops.wm.save_as_mainfile(filepath=str(blend_file))            
+            if self.prevent_backup:
+                backup = blend_file + "1"
+                if os.path.exists(backup):
+                    print("Removing backup " + backup)
+                    os.remove(backup) 
             wipe_and_purge_blend()
 
         print("Batch conversion completed")
