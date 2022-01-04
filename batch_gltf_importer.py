@@ -201,6 +201,10 @@ def import_and_clean(gltf, gltf_basename, context, target_faces, apply_decimate,
 
     mesh_object.name = mesh_object.data.name = gltf_basename.title().replace("_", " ").replace("-", " ")
 
+    view_3D = next(a for a in bpy.context.window.screen.areas if a.type == "VIEW_3D")
+    region = next(r for r in view_3D.regions if r.type == "WINDOW")
+    bpy.ops.view3d.view_all({"area": view_3D, "region": region})
+
 
 def menu_func_import(self, context):
     self.layout.operator(BatchConvertGLTF.bl_idname, text="Batch Convert GLTF Files")
