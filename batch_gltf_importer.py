@@ -22,15 +22,15 @@ def select_and_set_active(obj, context):
 
 
 def scale_my_model(obj, scale, expected_dimension, context):
-    dim = obj.dimensions[0] / expected_dimension
-    i = 0
-    while True:
-        if dim // (10 ** i) == 0:
-            break
-        i += 1
-    obj.scale = (scale / (10 ** i),) * 3
-    select_and_set_active(obj, context)
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    # dim = obj.dimensions[0] / expected_dimension
+    # i = 0
+    # while True:
+    #     if dim // (10 ** i) == 0:
+    #         break
+    #     i += 1
+    # obj.scale = (scale / (10 ** i),) * 3
+    obj.scale *= scale
+    bpy.ops.object.transform_apply({"selected_editable_objects": [obj]}, location=True, rotation=True, scale=True)
 
 
 def decimate_geometry_and_create_driver(obj, target_faces, apply_decimate):
@@ -145,7 +145,6 @@ class BatchConvertGLTF(Operator, ImportHelper):
         description="Scale the model by this amount",
         default=1,
         min=1,
-
     )
 
     def execute(self, context):
