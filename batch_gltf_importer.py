@@ -22,14 +22,14 @@ def select_and_set_active(obj, context):
 
 
 def scale_my_model(obj, scale, expected_dimension, context):
-    # dim = obj.dimensions[0] / expected_dimension
-    # i = 0
-    # while True:
-    #     if dim // (10 ** i) == 0:
-    #         break
-    #     i += 1
-    # obj.scale = (scale / (10 ** i),) * 3
-    obj.scale *= scale
+    # If one of the dim is > 1000 m there is a chance the model is in millimeters
+    dim = max(obj.dimensions) / 1000
+    i = 0
+    while True:
+        if dim // (10 ** i) == 0:
+            break
+        i += 1
+    obj.scale = (scale / (10 ** i),) * 3
     bpy.ops.object.transform_apply({"selected_editable_objects": [obj]}, location=True, rotation=True, scale=True)
 
 
